@@ -1,6 +1,7 @@
 const Ride = require("../model/Ride");
 const User = require("../model/User");
-const Driver = require("../model/Driver")
+const Driver = require("../model/Driver");
+const calculateFare = require("../utils/fareCalculator");
 
 const requestRide = async (req, res) => {
   try {
@@ -23,20 +24,20 @@ const requestRide = async (req, res) => {
       destination,
       status: "pending",
     });
-    
-    const nearbyDrivers =  Driver.find({
-        location: {
-            $near: {
-                $geometry: {
-                    type: "Point",
-                    coordinates: [
-                        pickup.lng,
-                        pickup.lat,
-                    ],
-                },
-                $maxDistance: 5000,
-            },
+
+    const nearbyDrivers = await Driver.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [
+              pickup.lng,
+              pickup.lat,
+            ],
+          },
+          $maxDistance: 5000,
         },
+      },
     });
 
     res.status(201).json({
@@ -54,72 +55,105 @@ const requestRide = async (req, res) => {
   }
 };
 
-const acceptRide = async(req, res) => {
-    try{
-        const ride = await Ride.findById(req.params.id);
+const acceptRide = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
 
-        if(!ride){
-            return res.status(404).json({
-                message: "ride not found",
-            });
-
-            const user = await User.findOne({
-                firebaseUid: req.user.uid,
-            });
-
-            const driver = await Driver.findOne({
-                userId: user._id,
-            });
-
-            ride.driverId = driver.userId;
-            ride.status = "accepted";
-
-            await ride.save();
-
-            res.json(ride);
-        }
-    }catch(error){
-        res.status(500).json({
-            message: error.message,
-        });
+    if (!ride) {
+      return res.status(404).json({
+        message: "Ride not found",
+      });
     }
+
+    const user = await User.findOne({
+      firebaseUid: req.user.uid,
+    });
+
+    const driver = await Driver.findOne({
+      userId: user._id,
+    });
+
+    if (!driver) {
+      return res.status(404).json({
+        message: "Driver not found",
+      });
+    }
+
+    ride.driverId = driver.userId;
+    ride.status = "accepted";
+
+    await ride.save();
+
+    res.json({
+      success: true,
+      ride,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
 };
 
-const startRide = async(req, res) => {
-    try{
-        const ride = await Ride.findById(req.params.id);
+const startRide = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
 
-        ride.status = "in_progress";
-
-        await ride.save();
-
-        res.json(ride);
-    }catch(error){
-        res.status(500).json({
-            message: error.message,
-        });
+    if (!ride) {
+      return res.status(404).json({
+        message: "Ride not found",
+      });
     }
+
+    ride.status = "in_progress";
+
+    await ride.save();
+
+    res.json({
+      success: true,
+      ride,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
 };
 
-const completeRide = async(req, res)=>{
-    try{
-        const ride = await Ride.findById(req.params.id);
+const completeRide = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
 
-        ride.status = "completed";
-
-        await ride.save();
-
-        res.json(ride);
-    }catch(error){
-        res.status(500).json({
-            message: error.message,
-        });
+    if (!ride) {
+      return res.status(404).json({
+        message: "Ride not found",
+      });
     }
-}
+
+    // Temporary distance in KM
+    // Later replace with Google Maps API distance
+    const distance = 8;
+
+    ride.fare = calculateFare(distance);
+    ride.status = "completed";
+
+    await ride.save();
+
+    res.json({
+      success: true,
+      fare: ride.fare,
+      ride,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
 
 module.exports = {
- requestRide,
- acceptRide,
- startRide,
- completeRide,
+  requestRide,
+  acceptRide,
+  startRide,
+  completeRide,
 };
