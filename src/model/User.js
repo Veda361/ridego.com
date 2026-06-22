@@ -19,9 +19,9 @@ const userSchema = new mongoose.Schema(
 
         role: {
             type: String,
-            enum: ["rider", "driver"],
+            enum: ["rider", "driver", "admin"],
             //user--->rider
-            required: true
+            required: true,
         },
 
         isOnline: {
