@@ -23,7 +23,7 @@ const rideSchema = new mongoose.Schema(
     destination: {
       address: String,
       lat: Number,
-      lng: Number,
+      lng: Number, 
     },
 
     currentLocation: {

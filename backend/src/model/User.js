@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema(
         role: {
             type: String,
             enum: ["rider", "driver", "admin"],
+            default: "rider",
             //user--->rider
             required: true,
         },
@@ -28,6 +29,15 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+
+        phone: {
+            type: String,
+            default:"",
+        },
+        
+    },
+    {
+        timestamps: true,
     },
         
 );

@@ -1,47 +1,76 @@
 const User = require("../model/User");
 
+const ADMIN_EMAILS = ["devsahugdg@gmail.com"];
+
+
 const registerUser = async (req, res) => {
   try {
     const { uid, email } = req.user;
 
-    let existingUser = await User.findOne({
-      firebaseUid: uid,
+    const role = ADMIN_EMAILS.includes(email.toLowerCase())
+      ? "admin"
+      : req.body.role || "rider";
+
+    const user = await User.findOneAndUpdate(
+      { firebaseUid: uid },
+      {
+        $setOnInsert: {
+          firebaseUid: uid,
+          email,
+          name: req.body.name,
+          role,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      user,
     });
+  } catch (err) {
+    console.error(err);
 
-    if (existingUser) {
-      return res.status(200).json(existingUser);
-    }
-
-    const newUser = await User.create({
-      firebaseUid: uid,
-      email,
-      name: req.body.name,
-      role: re.body.role || "rider"
-    });
-
-    res.status(201).json(newUser);
-  } catch (error) {
-    res.status(500).json({
-      message: error.message,
+    return res.status(500).json({
+      success: false,
+      message: err.message,
     });
   }
 };
 
 const getCurrentUser = async (req, res) => {
   try {
+    console.log("Firebase User:", req.user);
+
     const currentUser = await User.findOne({
       firebaseUid: req.user.uid,
     });
 
     if (!currentUser) {
-      return res.status(404).json({
-        message: "User not found",
+      const role = ADMIN_EMAILS.includes(req.user.email.toLowerCase())
+        ? "admin"
+        : "rider";
+
+      const newUser = await User.create({
+        firebaseUid: req.user.uid,
+        email: req.user.email,
+        name: req.user.email.split("@")[0],
+        role,
       });
+
+      return res.status(200).json(newUser);
     }
 
-    res.json(currentUser);
+    res.status(200).json(currentUser);
   } catch (error) {
+    console.error("GET USER ERROR:");
+    console.error(error);
+
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }

@@ -26,6 +26,7 @@
     "mongodb": "^7.3.0",
     "mongoose": "^9.7.1",
     "razorpay": "^2.9.6",
+    "recharts": "^3.9.1",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {

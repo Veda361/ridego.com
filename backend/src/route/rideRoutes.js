@@ -13,6 +13,8 @@ const {
   getDriverRides,
   getMyRides,
   getRideLocation,
+  getRiderStats,
+  cancelRide,
 } = require("../controllers/rideController");
 
 const { requestRideValidation } = require("../validators/rideValidator");
@@ -30,5 +32,9 @@ router.get("/my-rides", protect, getMyRides);
 router.get("/driver/my-rides", protect, getDriverRides);
 
 router.get("/:id/location", protect, getRideLocation);
+
+router.get("/stats", protect, getRiderStats);
+
+router.put("/:id/cancel", protect, cancelRide)
 
 module.exports = router;

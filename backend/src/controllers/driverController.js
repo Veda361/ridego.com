@@ -3,69 +3,105 @@ const Driver = require("../model/Driver");
 const Ride = require("../model/Ride");
 const Review = require("../model/Review");
 
+const registerDriver = async (req, res) => {
+  try {
+    const { vehicleType, vehicleNumber } = req.body;
 
-const registerDriver = async(req, res)=>{
-    try{
-        const {vehicleType, vehicleNumber} = req.body;
+    const user = await User.findOne({
+      firebaseUid: req.user.uid,
+    });
 
-        const user = await User.findOne({
-            firebaseUid: req.User.uid,
-        });
-
-        const driver = await Driver.create({
-            userId: user._id,
-            vehicleType,
-            vehicleNumber,
-
-        });
-
-        res.status(201).json(driver);
-
-    }catch(error){
-        res.status(500).json({
-            message: error.message,
-        });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
+    const driver = await Driver.create({
+      userId: user._id,
+      vehicleType,
+      vehicleNumber,
+    });
+
+    await User.findByIdAndUpdate(user._id, {
+      role: "driver",
+    });
+
+    res.status(201).json(driver);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
 
-const goOnline = async(req, res)=>{
-    try{
-        const {lat, lng} = req.body;
+const goOnline = async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
 
-        const user = await User.findOne({
-            firebaseUid: req.user.uid,
-        })
-
-        await User.findByIdAndUpdate(user._id, {
-            isOnline: true,
-        });
-
-        await Driver.findOneAndUpdate({
-            userId: user._id
-        },
-        {
-            location: {
-                type: "Point",
-                coordinate: [lng, lat],
-            },
-        }
-    );
-    res.json({
-        success: true,
-        message: "Driver Online",
+    const user = await User.findOne({
+      firebaseUid: req.user.uid,
     });
-    }catch(error){
-        res.status(500).json({
-            message: error.message,
-        });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
+
+    await User.findByIdAndUpdate(user._id, {
+      isOnline: true,
+    });
+
+    const driver = await Driver.findOneAndUpdate(
+      {
+        userId: user._id,
+      },
+      {
+        isAvailable: true,
+        location: {
+          type: "Point",
+          coordinates: [lng, lat],
+        },
+      },
+      {
+        new: true,
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Driver Online",
+      driver,
+    });
+  } catch (error) {
+    console.error("GO ONLINE ERROR:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
 
 const goOffline = async (req, res) => {
   try {
     const user = await User.findOne({
       firebaseUid: req.user.uid,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    await User.findByIdAndUpdate(user._id, {
+      isOnline: false,
     });
 
     const driver = await Driver.findOneAndUpdate(
@@ -80,13 +116,23 @@ const goOffline = async (req, res) => {
       }
     );
 
-    res.json({
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found",
+      });
+    }
+
+    res.status(200).json({
       success: true,
       message: "Driver Offline",
       driver,
     });
   } catch (error) {
+    console.error("GO OFFLINE ERROR:", error);
+
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -138,8 +184,7 @@ const getDriverStats = async (req, res) => {
       totalReviews > 0
         ? (
             reviews.reduce(
-              (sum, review) =>
-                sum + review.rating,
+              (sum, review) => sum + review.rating,
               0
             ) / totalReviews
           ).toFixed(1)
@@ -147,11 +192,7 @@ const getDriverStats = async (req, res) => {
 
     const completionRate =
       totalRides > 0
-        ? (
-            (completedRides /
-              totalRides) *
-            100
-          ).toFixed(2)
+        ? ((completedRides / totalRides) * 100).toFixed(2)
         : 0;
 
     res.json({
@@ -168,10 +209,20 @@ const getDriverStats = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("GET DRIVER STATS ERROR:", error);
+
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
 };
 
-module.exports = {registerDriver, goOnline, goOffline, getDriverStats};
+
+
+module.exports = {
+  registerDriver,
+  goOnline,
+  goOffline,
+  getDriverStats,
+};
